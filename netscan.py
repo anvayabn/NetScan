@@ -1,12 +1,14 @@
 import ipaddress
+
 import scapy.all as scapy
 
 # Debug Flags
 DEBUG_DISPLAY_ALL_ADDRESSES = False
-DEBUG = True
+DEBUG = False
 
 DEFAULT_NETWORK_ADDRESS = "192.168.1.0"
 DEFAULT_HOST_ADDRESS = "192.168.1.90"
+DEFAULT_BROADCAST_IP_ADDRESS = "192.168.1.255"
 DEFAULT_SUBNET_MASK = "24"
 DEFAULT_GATEWAY_IP = "192.168.1.254"
 DEFAULT_BROADCAST_MAC_ADDRESS = "ff:ff:ff:ff:ff:ff"
@@ -59,7 +61,7 @@ class Ether_layer:
             return None
         else:
             if not self.src:
-                self.e_layer = scapy.Ether(dst=self.dst,type=self.typ)
+                self.e_layer = scapy.Ether(dst=self.dst, type=self.typ)
             else:
                 self.e_layer = scapy.Ether(dst=self.dst, src=self.src, type=self.typ)
             return self.e_layer
@@ -141,10 +143,11 @@ def construct_l2frame(src_mac, src_ip, dst_mac, dst_ip):
     # Combine layers into a packet
     pkt = Lt_Packet(ether_layer, arp_layer)
     packet = pkt.make_l2_packet()
-    
+
     if DEBUG:
         pkt.display_packet()
     return packet
+
 
 def main():
     IP_ADDRESS = DEFAULT_NETWORK_ADDRESS + "/" + DEFAULT_SUBNET_MASK
@@ -153,14 +156,24 @@ def main():
     if DEBUG_DISPLAY_ALL_ADDRESSES:
         for ip in netwrk_addr:
             print(f"{str(ip)}")
-    
-    #get interface IP_ADDRESS
+
     src_mac_address = scapy.Ether().src
-    # Construct the ARP and Ethernet packet
-    pkt = construct_l2frame(src_mac_address, DEFAULT_HOST_ADDRESS, DEFAULT_BROADCAST_MAC_ADDRESS, DST_IP_ADDRESS)
-    # send packet
-    
-    # scapy.sendp(pkt, verbose=0)
+    for ip in netwrk_addr:
+        if (
+            str(ip) != DEFAULT_HOST_ADDRESS
+            and str(ip) != DEFAULT_NETWORK_ADDRESS
+            and str(ip) != DEFAULT_BROADCAST_IP_ADDRESS
+        ):
+            print(f"{str(ip)}")
+            # Construct the ARP and Ethernet packet
+            pkt = construct_l2frame(
+                src_mac_address,
+                DEFAULT_HOST_ADDRESS,
+                DEFAULT_BROADCAST_MAC_ADDRESS,
+                str(ip),
+            )
+            # send packet
+            # scapy.sendp(pkt, verbose=0)
 
 
 if __name__ == "__main__":
