@@ -1,13 +1,17 @@
 import ipaddress
-from os import walk
-
 import scapy.all as scapy
 
-DEFAULT_NETWORK_ADDRESS = "192.168.1.0"
-DEFAULT_SUBNET_MASK = "24"
+# Debug Flags
 DEBUG_DISPLAY_ALL_ADDRESSES = False
 DEBUG = True
 
+DEFAULT_NETWORK_ADDRESS = "192.168.1.0"
+DEFAULT_HOST_ADDRESS = "192.168.1.90"
+DEFAULT_SUBNET_MASK = "24"
+DEFAULT_GATEWAY_IP = "192.168.1.254"
+DEFAULT_BROADCAST_MAC_ADDRESS = "ff:ff:ff:ff:ff:ff"
+
+# DEFAULT values for packet
 SRC_IP_ADDRESS = "192.168.1.1"
 SRC_MAC_ADDRESS = "ff:ff:ff:ff:ff:ff"
 DST_IP_ADDRESS = "192.168.1.2"
@@ -51,15 +55,18 @@ class Ether_layer:
         self.typ = prot_typ
 
     def make_ether_frame(self):
-        if not self.dst or not self.src or not self.typ or self.e_layer:
+        if not self.dst or not self.typ or self.e_layer:
             return None
         else:
-            self.e_layer = scapy.Ether(dst=self.dst, src=self.src, type=self.typ)
+            if not self.src:
+                self.e_layer = scapy.Ether(dst=self.dst,type=self.typ)
+            else:
+                self.e_layer = scapy.Ether(dst=self.dst, src=self.src, type=self.typ)
             return self.e_layer
 
     def display_elayer(self):
         if self.e_layer:
-            print(f"{self.e_layer}")
+            print(f"{self.e_layer.show()}")
 
 
 class Arp_pkt:
@@ -105,7 +112,7 @@ class Arp_pkt:
 
     def display_arp(self):
         if self.Arp_pkt:
-            print(f"{self.Arp_pkt}")
+            print(f"{self.Arp_pkt.show()}")
 
 
 def construct_l2frame(src_mac, src_ip, dst_mac, dst_ip):
@@ -116,13 +123,15 @@ def construct_l2frame(src_mac, src_ip, dst_mac, dst_ip):
     arp.set_dst_ip(dst_ip)
     arp.set_dst_mac(dst_mac)
     arp_layer = arp.make_arp_packet()
+    # arp.display_arp()
 
     # Construct Ethernet frame
     ether = Ether_layer()
     ether.set_dst_mac(dst_mac)
-    ether.set_src_mac(src_mac)
+    # ether.set_src_mac(src_mac)
     ether.set_type(ARP_TYPE)  # ARP protocol type
     ether_layer = ether.make_ether_frame()
+    # ether.display_elayer()
 
     # Check if layers were created successfully
     if not ether_layer or not arp_layer:
@@ -131,11 +140,11 @@ def construct_l2frame(src_mac, src_ip, dst_mac, dst_ip):
 
     # Combine layers into a packet
     pkt = Lt_Packet(ether_layer, arp_layer)
-    pkt.make_l2_packet()
-
+    packet = pkt.make_l2_packet()
+    
     if DEBUG:
         pkt.display_packet()
-
+    return packet
 
 def main():
     IP_ADDRESS = DEFAULT_NETWORK_ADDRESS + "/" + DEFAULT_SUBNET_MASK
@@ -143,11 +152,14 @@ def main():
 
     if DEBUG_DISPLAY_ALL_ADDRESSES:
         for ip in netwrk_addr:
-            print(f"{ip}")
-
+            print(f"{str(ip)}")
+    
+    #get interface IP_ADDRESS
+    src_mac_address = scapy.Ether().src
     # Construct the ARP and Ethernet packet
-    construct_l2frame(SRC_MAC_ADDRESS, SRC_IP_ADDRESS, DST_MAC_ADDRESS, DST_IP_ADDRESS)
+    pkt = construct_l2frame(src_mac_address, DEFAULT_HOST_ADDRESS, DEFAULT_BROADCAST_MAC_ADDRESS, DST_IP_ADDRESS)
     # send packet
+    
     # scapy.sendp(pkt, verbose=0)
 
 
